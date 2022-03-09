@@ -1,0 +1,53 @@
+\section{Bayesian Lasso Estimate}
+\label{app:bayesian_lasso_estimate}
+The following demonstrates that a Bayesian regression model with a Laplace prior on the coefficients centered at zero yields the frequentist lasso estimate at its posterior mode. Full specifications of the Bayesian lasso can be found for example in \textcite{yuan_efficient_2005,park_bayesian_2008,figueiredo_adaptive_2003}.
+
+Consider the standard regression model $y_i = \beta_0 + \sum_{j = 1}^{p} \beta_j x_{ij} + \epsilon_i$ with $\epsilon_i \overset{\text{i.i.d.}}{\sim} N(0, \sigma^2)$ and i.i.d. $\beta = \beta_1 , \beta_2 , \dots , \beta_p$. The joint likelihood is normal and given by
+\begin{align}
+    \label{eq:lasso_normal_likelihood}
+    p(y|X,\beta) = \prod_{i = 1}^{n} \frac{1}{\sqrt{2 \pi} \sigma} \exp \left( - \frac{\epsilon_i^2}{2 \sigma^2} \right) \propto \exp \left( - \frac{1}{2 \sigma^2} \sum_{i = 1}^{n} \epsilon_i^2 \right)
+\end{align}
+with $\epsilon_i = y_i - \beta_0 - \sum_{j = 1}^{p} \beta_j x_{ij}$. A Laplace prior centered at zero conditional on the scale parameter $\tau$ can be written as
+\begin{align}
+    \label{eq:lasso_laplace_prior}
+    p(\beta | \tau) = \prod_{j = 1}^{p} \frac{1}{2 \tau} \exp \left( - \frac{| \beta_j |}{\tau} \right) \propto \exp \left( - \frac{1}{\tau} \sum_{j = 1}^{p} |\beta_j| \right) \text{.}
+\end{align}
+
+Given the likelihood in Equation~\eqref{eq:lasso_normal_likelihood} and the prior in Equation \eqref{eq:lasso_laplace_prior}, the posterior $p(\beta | y , X , \tau) \propto p(y|X,\beta) p(\beta | \tau)$ is
+\begin{align}
+    \label{eq:lasso_posterior}
+    p(\beta | y , X , \tau) & \propto \exp \left( - \frac{1}{2 \sigma^2} \sum_{i = 1}^{n} \epsilon_i^2 \right) \exp \left( - \frac{1}{\tau} \sum_{j = 1}^{p} |\beta_j| \right) \nonumber \\
+                 & = \exp \left( - \frac{1}{2 \sigma^2} \sum_{i = 1}^{n} \epsilon_i^2 - \frac{1}{\tau} \sum_{j = 1}^{p} |\beta_j| \right) \text{.}
+\end{align}
+
+Now, it will be shown that the optimization problem for finding the posterior mode of Equation~\eqref{eq:lasso_posterior} can be rewritten to the frequentist lasso optimization problem as specified in Section~\ref{subsec:shrinkage_and_sparsity}, Equation~\eqref{eq:lasso_optimiziation_problem}. Therefore, the posterior mode is calculated by maximizing the $log$-posterior:
+\begin{align*}
+    \log p(\beta|y , X , \tau) & = - \frac{1}{2 \sigma^2} \sum_{i = 1}^{n} \epsilon_i^2 - \frac{1}{\tau} \sum_{j = 1}^{p} |\beta_j| = - \left( \frac{1}{2 \sigma^2} \sum_{i = 1}^{n} \epsilon_i^2 + \frac{1}{\tau} \sum_{j = 1}^{p} |\beta_j| \right) \text{.}
+\end{align*}
+Since the $log$-posterior is negative one can reformulate the maximization problem to a minimization problem by omitting the negative sign:
+\begin{align*}
+    \text{arg} \min_{\beta} \left[ \frac{1}{2 \sigma^2} \sum_{i = 1}^{n} \epsilon_i^2 + \frac{1}{\tau} \sum_{j = 1}^{p} |\beta_j| \right] = \text{arg} \min_{\beta} \frac{1}{2 \sigma^2} \left[ \sum_{i = 1}^{n} \epsilon_i^2 + \frac{2 \sigma^2}{\tau} \sum_{j = 1}^{p} |\beta_j| \right] \text{.}
+\end{align*}
+Ignoring the normalizing constant $\frac{1}{2 \sigma^2}$ and setting $\lambda = \frac{2 \sigma^2}{\tau}$ yields the frequentist Lasso estimate:
+\begin{align*}
+    \text{arg} \min_{\beta} \left[ \sum_{i = 1}^{n} \epsilon_i^2 + \lambda \sum_{j = 1}^{p} |\beta_j| \right] \text{.}
+\end{align*}
+
+\hfill$\square$
+
+\section{Model Evaluation Metrics}
+\subsection{Root-Mean-Squared-Forecast-Error (RMSE)}
+\label{app:rmse}
+The root-mean-squared-forecast-error (RMSE) describes the square-root of the squared average deviation of forecasts from the true values. It can be written as follows \parencite{banbura_large_2010}:
+\begin{align*}
+    \text{RMSE} = \sqrt{\frac{1}{T_1 - T_0 - H + 1} \sum_{T = T_0 + H - h}^{T_1 - h} (y_{i , T + h | T} - y_{i , T + h})^2} \; \text{,}
+\end{align*}
+where $y_{i , T + h | T}$ is a point estimate (e.g. posterior median) at time $T + h$ given the information set for the time span $T$ and $y_{i , T + h}$ the true value at time $T + h$. $T_0$ and $T_1$ are the beginning and the end of the evaluation sample and $H$ the longest forecast horizon.
+
+\subsection{Predictive Likelihood}
+\label{app:lpl}
+The predictive likelihood is the posterior predictive density evaluated at the actual true outcome. The sum of log predictive likelihoods can be used to compare the forecasting performance of one model relative to other models. It is defined as follows \parencite{koop_forecasting_2013}:
+\begin{align*}
+    \sum_{T = T_0}^{T_1 - h} \log [ p(y_{i , T + h | T} = y_{i , T + h} | \text{Data}_T) ] \; \text{,}
+\end{align*}
+where $y_{i , T + h | T}$ is a point estimate (e.g. posterior median) at time $T + h$ given the information set for the time span $T$ and $y_{i , T + h}$ the true value at time $T + h$. $T_0$ and $T_1$ are the beginning and the end of the evaluation sample and $h$ the forecast horizon. Finally, $\text{Data}_T$ is the information set available at time T. 

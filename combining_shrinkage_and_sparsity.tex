@@ -1,0 +1,99 @@
+\section{Combining Shrinkage and Sparsity in Bayesian VAR Models}
+\label{sec:combining_shrinkage_and_sparsity}
+VAR models are traditionally estimated by generalized least squares (GLS) as described in \textcite[pp.~69~ff.]{lutkepohl_new_2005}. With the rise of Bayesian statistics -- thanks to computational advances -- Bayesian VAR estimation of larger models became feasible and gained popularity in macroeconomic research \parencite[p.~269]{koop_bayesian_2009}.
+
+This seminar paper focuses on conjugate BVAR models which have the property that the prior distributions are of the same family of distributions as the corresponding posterior distributions \parencite[pp.~35~f.]{gelman_bayesian_2013}. The key advantage of conjugacy compared to non-conjugate models is that posterior distributions are available in closed form and do not need to be approximated via sampling methods like MCMC.
+
+The remainder of this section outlines the conjugate BVAR model setup proposed by \textcite{hauzenberger_combining_2021} and describes their sparsification algorithms. If not stated otherwise, the reference used is the aforementioned paper.
+
+\subsection{Conjugate Shrinkage Prior Setup}
+\label{subsec:prior_setup}
+The VAR model specification outlined in Section~\ref{subsec:var_model_defintion} is a general one and not related to estimation. In order to estimate the defined VAR model in a Bayesian manner, it is necessary to specify prior distributions for all unknown parameters for which the researcher wishes to calculate a posterior distribution. The prior setup described below makes use of informative priors to realize shrinkage on the parameters.
+
+The two unknown components to be estimated in this VAR model setup are the vectorized coefficients $\alpha$ and the variance-covariance matrix $\Sigma$. The prior for $\alpha$ is conditional on $\Sigma$ in the conjugate setup and can be written as
+\begin{align}
+    \label{eq:alpha_prior}
+    \alpha | \Sigma \sim \mathcal{N}(\alpha_0 , \Sigma \otimes V_0(\delta)) \; \text{,}
+\end{align}
+where a common choice for $\alpha_0$ is zero for stationary time series. The prior for $\Sigma$ is an inverted-Wishart distribution with degrees of freedom $s_0$ and scaling matrix $S_0$ as hyperparameters. This allows the researcher to control the amount of shrinkage imposed on the variance-covariance matrix:
+\begin{align}
+    \label{eq:sigma_prior}
+    \Sigma \sim \mathcal{W}^{-1}(s_0 , S_0) \; \text{.}
+\end{align}
+
+Shrinkage on $\alpha$ in this prior setup is realized through the $V_0(\delta)$ term in Equation~\eqref{eq:alpha_prior}. \textcite{hauzenberger_combining_2021} use a variant of the Minnesota prior for $V_0$ implemented using a set of dummy observations as outlined in \textcite{banbura_large_2010}. The intuition of the Minnesota prior is to shrink all equations of the VAR model towards a random walk. This implies that the coefficients of the first own lags of any $y_t$ in $Y$ are shrunk towards one whereas the others are shrunk towards zero \parencite{banbura_large_2010,koop_forecasting_2013,kadiyala_numerical_1997}. This captures the notion that the first own lags of a variable are a priori considered to be important. Details about the exact usage of the Minnesota prior and how one can control the degree of shrinkage using the $\delta$ vector of hyperparameters can be found in \textcite[p.~306]{hauzenberger_combining_2021}.
+
+The priors detailed in Equations \eqref{eq:alpha_prior} and \eqref{eq:sigma_prior} are natural conjugate priors because they reflect the likelihood $p(y | \alpha , \Sigma)$ in a natural way: It can be shown that the likelihood is the product of a normal distribution conditional on the variance-covariance matrix and an inverted-Wishart distribution for $\Sigma$. Hence, multiplying this likelihood with priors of the same distributions yields posteriors of the same distributional form \parencite{kadiyala_numerical_1997,koop_bayesian_2009}.
+
+While this conjugate prior setup comes with the advantage of computationally cheaper calculations in comparison to non-conjugate prior setups it also comes with a cost. The Kronecker structure in Equation~\eqref{eq:alpha_prior} implies that prior variances for the VAR coefficients across equations must be proportional to each other. The prior variance is given by $\sigma^2_{jj} V_0(\delta)$ where $\sigma^2_{jj}$ is the $(j, j)$th element in $\Sigma$. This means that the researcher cannot differentiate between coefficients on own and other lags which is a restrictive property.
+
+\subsection{Ex-Post Sparsification}
+The prior setup described in Section~\ref{subsec:prior_setup} leads to posterior distributions available in closed form. The full posterior distributions with their moments can be found in the original paper \parencite[p.~307]{hauzenberger_combining_2021}.
+
+In particular, the one-step ahead posterior predictive density $p(y_{T + 1} | Y , X)$ is also available in closed from. It is a multivariate $t$-distribution with variance denoted by
+\begin{align}
+    \label{eq:predictive_variance}
+    Var(y_{T + 1} | Y , X) = \frac{1}{s_1 - 2} \underbrace{\left( 1 + \sum_{i = 1}^{n} \sum_{j = 1}^{n} (x_{i T + 1} x_{j T + 1} \nu_{ij}) \right)}_{\text{Parameter uncertainty}} S_1 \; \text{,}
+\end{align}
+where $s_1$ and $S_1$ are the mean and variance of the inverted-Wishart posterior for $\Sigma$ and $\nu_{ij}$ is the $(i,j)$th element in the Minnesota-dummy augmented posterior variance of $\alpha$.
+
+The predictive variance denoted in Equation~\eqref{eq:predictive_variance} reveals two problems that amplify each other. Firstly, the highlighted parameter uncertainty adds up with the number of parameters. As explained in Section~\ref{subsec:var_model_defintion}, VAR models suffer from the curse of dimensionality such that even the shrunk parameters add up to a serious amount. Secondly, the parameter uncertainty is further amplified by the predictive variance of the reduced-form shocks in $\epsilon_{T + 1}$ denoted by the scale-matrix $S_1$ of the inverted-Wishart posterior for $\Sigma$. This problem becomes particularly striking in macroeconomic research because typical macroeconomic datasets have many (correlated) variables which leads to an inflated error-variance in the estimates ($S_1$).
+
+This issue serves as motivation for the upcoming subsections describing how \textcite{hauzenberger_combining_2021} approach the sparsification of $\Sigma$ and $\alpha$. In a sparse model, $\nu_{ij}$ becomes exactly zero for excluded covariates such that predictive parameter uncertainty is reduced.
+
+\subsubsection{Sparsification of \texorpdfstring{$\alpha$}{Alpha}}
+\label{subsubsec:sparsification_alpha}
+The straightforward way to obtain a sparse representation of $\alpha$ is by randomly setting values to zero and comparing the restricted model with its unrestricted version. However, the solution space of $2^k$ possible solutions is unfeasible to explore even on modern computers. Therefore, \textcite{hauzenberger_combining_2021} utilize an approach first introduced by \textcite{hahn_decoupling_2015} and later modified by \textcite{ray_signal_2018}. The goal of this technique is to solve the following optimization problem to obtain a sparse estimator $\hat{\alpha}^*$ for an estimator $\hat{\alpha}$ obtained with the Minnesota prior presented in Section~\ref{subsec:prior_setup}:
+\begin{align}
+    \label{eq:alpha_sparsification_optimiziation_problem}
+    \hat{\alpha}^* = \text{arg} \min_{\alpha} \left\{ \frac{1}{2} \lVert (Z \hat{\alpha} - Z \alpha) \rVert_2^2 + \sum_{j = 1}^{\kappa} \kappa_j | \alpha_j | \right\} \; \text{,}
+\end{align}
+with $Z = (\mathcal{I}_m \otimes X)$, $\alpha$ being the sparse counterpart of the point-estimate $\hat{\alpha}$ and $\lVert m \rVert_2^2$ the notation for the Euclidean norm of a vector $m$. Intuitively, the first part of this optimization problem is the distance between an unrestricted (non-sparse) and a restricted (sparse) model while the second part is a penalty for non-zero values of $\alpha$.
+
+Similar to the lasso example in Section~\ref{subsec:shrinkage_and_sparsity}, it is required to carefully choose the penalization strength denoted here by $\kappa_j$. While \textcite{hahn_decoupling_2015} propose to employ a cross-validation approach – which is computationally not feasible for large $\kappa$ – \textcite{ray_signal_2018} adopt the signal adaptive variable selection (SAVS) estimator. This estimator utilizes the coordinate descent algorithm \parencite{friedman_pathwise_2007} and yields a closed form solution when dividing the optimization problem of Equation~\eqref{eq:alpha_sparsification_optimiziation_problem} into multiple separate problems for each column $Z_j$ of $Z$. The solution to this problem is given by
+\begin{align}
+    \hat{\alpha}_j^* = \text{sign}(\hat{\alpha}_j) \lVert Z_j \rVert^{-2} (| \hat{\alpha}_j | \lVert Z_j \rVert^2 - \kappa_j)_+ \; \text{,}
+\end{align}
+for $j = 1 , \dots , k$, $\text{sign}(c)$ returning the sign of a real number $c$ and $(c)_+ = \max \{c , 0\}$.
+
+An advantage of this ex-post sparsification is that $\kappa_j$ is a variable-specific penalization that relaxes the restriction of the conjugate Minnesota prior setup where it is only possible to impose a proportional strength of shrinkage on coefficients across equations.
+
+Setting $\kappa_j$ can be realized by making it dependent on the non-sparse estimate $\hat{\alpha_j}$:
+\begin{align}
+    \kappa_j = \frac{\lambda}{| \hat{\alpha}_j |^\zeta} \; \text{,}
+\end{align}
+with $\lambda > 0$ and $\zeta \geq 1$. Intuitively, the larger $\zeta$ the more weight is placed on small coefficients $\hat{\alpha}_j$ to be zeroed out in post-processing. Empirically, \textcite{ray_signal_2018} found $\zeta = 2$ to be a good choice.  Choosing $\lambda$ is more involved. \textcite{hauzenberger_combining_2021} modify the SAVS estimator to choose $\lambda$ in a way to discriminate between the number of lags and whether it is an own lag or the lag of another variable for each VAR equation. They set $\lambda$ as
+\begin{align}
+    \lambda_{l,ij} = 
+    \begin{cases}
+        \lambda (l - 1)^2 & \text{if} \quad i = j \\
+        \lambda l^2       & \text{if} \quad i \neq j
+    \end{cases}
+    \quad \text{,}
+\end{align}
+for $l = 1 , \dots , p ; i = 1 , \dots , m ; j = 1 , \dots , m$. The first case refers to own lags of variables and sets the penalty to zero for the first own lag. The penalty increases with the lag number capturing the notion that importance dies out over time (as expected in AR processes). The second case increases the penalty quadratically in lag number for other variables, respectively. In this setup, $\lambda$ is now considered a time-invariant scaling parameter where higher values impose a stronger shrinkage and lower values a weaker shrinkage.
+
+\subsubsection{Sparsification of \texorpdfstring{$\Sigma$}{Sigma}}
+\label{subsubsec:sparsification_sigma}
+As depicted in Equation~\eqref{eq:predictive_variance}, the second driver of estimation uncertainty is the variance-covariance matrix $\Sigma$ and its posterior variance $S_1$. Sparsifying $\Sigma$ can further counteract predictive uncertainty. \textcite{hauzenberger_combining_2021} use a standard approach to ex-post sparsify the precision matrix $\Sigma^{-1}$ called the graphical lasso \parencite{friedman_sparse_2008,bashir_post-processing_2019}. The loss function to find the best sparse estimator $\hat{\Omega}^*$ for the precision matrix $\Sigma^{-1}$ with elements given by $\omega_{ij}$ is defined as follows:
+\begin{align}
+    \label{eq:sigma_sparsification_optimiziation_problem}
+    \hat{\Omega^*} = \text{arg} \min_{\Omega} \left\{ \text{tr}(\Omega \hat{S}) - \log(\det(\Omega)) + \sum_{i \neq j} \rho_{ij} | \omega_{ij} | \right\} \; \text{,}
+\end{align}
+with $\hat{S}$ representing a variance-covariance matrix estimate, $\rho_{ij}$ a parameter-specific penalty, $\log(\det(\bullet))$ the log-determinant of a matrix and $\text{tr}(\bullet)$ the trace of a square matrix. Generally, one can observe that this problem is similar to the one in Equation~\eqref{eq:alpha_sparsification_optimiziation_problem}. The first part of this optimization problem measures the negative expected model fit while the second part imposes a parameter specific penalty on non-zero precision values. Again, the problem can be solved as a set of independent optimization problems using the coordinate descent algorithm applied on each off-diagonal element.
+
+The penalty term $\rho_{ij}$ is chosen as
+\begin{align}
+    \rho_{ij} = \frac{w}{|\hat{s}^*_{ij}|^{\frac{\kappa}{2}}} \; \text{,}
+\end{align}
+where $|\hat{s}^*_{ij}|$ denotes the absolute value of the $(i, j)$th element in $\hat{S}^{-1}$ and $w$ is a lag-invariant scalar penalty parameter. $\kappa \geq 1$ controls the penalization strength on small precision parameters.
+
+\subsubsection{Approximation of Sparse Posteriors}
+\label{subsubsec:approximation_of_sparse_posteriors}
+The ex-post sparsification problems described in the preceding two sections yield exactly one sparsified point estimate obtained by solving the optimization problems defined in Equations \eqref{eq:alpha_sparsification_optimiziation_problem} and \eqref{eq:sigma_sparsification_optimiziation_problem}. However, using point-estimates only misses the whole point of applying Bayesian estimation. The key advantage of Bayesian estimation is that the researcher can make statements about the predictive uncertainty by looking at the variance of parameter-specific posterior distributions. This is not possible with point-estimates only.
+
+To counteract this issue, \textcite{hauzenberger_combining_2021} propose a way to approximate a sparsified posterior distribution similar in nature to the way how one would approximate a posterior distribution using MCMC if the analytical form is unknown. Instead of taking one point-estimate like the posterior mode and sparsifying it, the authors propose to draw repeatedly from the (non-sparse but shrunk) posterior and \emph{sparsify each draw}. Drawing from the posterior is easy. First, one can sample $R$ values $\Sigma^{(r)}$ from the marginal posterior of $\Sigma | Y , X \sim \mathcal{W}^{-1}$ and subsequently sample $R$ values $\alpha^{(r)}$ from the conditional posterior of $\alpha | \Sigma , Y , X \sim \mathcal{N}$ plugging in each sample $\Sigma^{(r)}$ consecutively.
+
+Sparsifying each draw from the posterior and taking a sample point-estimate from the population of sparsified draws is approximately similar to simply taking one point-estimate from the analytical posterior and sparsifying it. However, the major advantage of sampling and sparsifying repeatedly is that one can make statements about the predictive uncertainty of the obtained sparse model. Intuitively, one approximates a sparse joint posterior distribution $p(\hat{\alpha}^* , \hat{\Omega}^* | Y , X)$.
+
+This result is a core result in this paper by \textcite{hauzenberger_combining_2021} and a great advantage over comparable approaches \parencite{hahn_decoupling_2015} because it allows the quantification of predictive uncertainty in post-processed sparse BVAR models. 

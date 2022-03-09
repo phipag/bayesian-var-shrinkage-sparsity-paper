@@ -1,0 +1,73 @@
+\documentclass[a4paper,12pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+\usepackage{csquotes}
+
+\usepackage[backend=biber,style=apa]{biblatex}
+\addbibresource{main.bib}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{microtype} % Can avoid overfull hboxes in some cases e.g. when \section is longer than one line
+\usepackage[breaklinks,hidelinks]{hyperref} % Makes links clickable and breakable into multiple lines
+\usepackage[raggedright]{titlesec} % Avoids hyphenation in titles
+
+\title{Combining Shrinkage and Sparsity in Conjugate Vector Autoregressive Models}
+\author{Niko Hauzenberger, Florian Huber and Luca Onorante}
+\date{February, 2022}
+
+\begin{document}
+    \makeatletter % Makes \@title, \@author, \@date macros available
+    \begin{titlepage}
+        \begin{center}
+            \huge \@title
+            
+            \bigskip
+            \large \@author
+            
+            \vfill
+            
+            \large Seminar Paper\\
+            \Large Philipp Page
+            
+            \vfill
+            
+            \includegraphics[width=3cm]{figures/logo_wiso.png}
+            \bigskip
+            
+            \large
+            Seminar Econometrics\\
+            Faculty of Management, Economics and Social Sciences\\
+            University of Cologne
+            
+            \bigskip
+            \@date
+        \end{center}
+    \end{titlepage}
+    \makeatother % Clears \@title, \@author, \@date macros
+    
+    \pagenumbering{roman}
+    \tableofcontents
+    \newpage
+    
+    \pagenumbering{arabic}
+
+    \include{introduction}
+    \include{theoretical_background}
+    \include{combining_shrinkage_and_sparsity}
+    \include{forecasting_application}
+    \include{conclusion}
+    
+    \newpage
+    \appendix
+    \include{appendix}
+    
+    \newpage
+    \nocite{hauzenberger_combining_2021}
+    \addcontentsline{toc}{section}{References}
+    \printbibliography
+\end{document}
